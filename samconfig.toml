@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "price-feed"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-kgaorbiks5cz"
+s3_prefix = "price-feed"
+region = "us-west-2"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
+image_repositories = []

@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  solace-price-feed
+
+  Sample SAM Template for solace-price-feed
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    AutoPublishAlias: live
+    Tracing: Active
+    Environment:
+      Variables:
+        DEAD_LETTER_TOPIC: arn:aws:sns:us-west-2:151427405638:PriceFeedDeadLetterQueue
+        DATA_BUCKET: price-feed.solace.fi.data
+    DeadLetterQueue:
+      Type: SNS
+      TargetArn: arn:aws:sns:us-west-2:151427405638:PriceFeedDeadLetterQueue
+  Api:
+    Cors:
+      AllowMethods: "'OPTIONS,GET,POST,PUT,DELETE'"
+      AllowHeaders: "'Content-Type'"
+      AllowOrigin: "'*'"
+
+Resources:
+  # Rest API
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: SolacePriceFeedApi
+      Domain:
+        DomainName: price-feed.solace.fi
+        CertificateArn: arn:aws:acm:us-west-2:151427405638:certificate/55b18704-e0db-4ce8-b070-43fc8b0c919d
+        Route53:
+          HostedZoneId: Z0480029MZJJGNMS3NEJ
+      StageName: prod
+      TracingEnabled: true
+  OptionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SolacePriceFeedOptionsFunction
+      Handler: api/options.handler
+      Runtime: python3.8
+      MemorySize: 128
+      Timeout: 3
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        GetEvent:
+          Type: Api
+          Properties:
+            Path: /
+            Method: options
+            RestApiId: !Ref RestApi
+  FaviconFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SolacePriceFeedFaviconFunction
+      Handler: api/favicon/get.handler
+      Runtime: python3.8
+      MemorySize: 128
+      Timeout: 3
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        GetEvent:
+          Type: Api
+          Properties:
+            Path: /favicon.ico
+            Method: get
+            RestApiId: !Ref RestApi
+  # Data Bucket
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: price-feed.solace.fi.data
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods:
+              - HEAD
+              - GET
+            AllowedOrigins:
+              - "*"
+            AllowedHeaders:
+              - "*"
+  # SNS Dead Letter Topic
+  DeadLetterTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Solace Price Feed Dead Letter Queue
+      TopicName: PriceFeedDeadLetterQueue
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SolacePriceFeedLambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [lambda.amazonaws.com]
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: SolacePriceFeedLambdaExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "sns:Publish"
+                Resource: "arn:aws:sns:us-west-2:151427405638:PriceFeedDeadLetterQueue"
+              - Effect: Allow
+                Action:
+                  - "s3:GetObject"
+                  - "s3:DeleteObject"
+                  - "s3:ListBucket"
+                  - "s3:ListObjectsV2"
+                  - "s3:PutObject"
+                  - "s3:ReplicateObject"
+                  - "s3:RestoreObject"
+                Resource: "arn:aws:s3:::price-feed.solace.fi.data/*"
