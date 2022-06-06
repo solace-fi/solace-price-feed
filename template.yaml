@@ -163,6 +163,21 @@ Resources:
               - "*"
             AllowedHeaders:
               - "*"
+  # tracker function
+  SolacePriceFeedTrackerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SolacePriceFeedTrackerFunction
+      Handler: src/tracker.handler
+      Runtime: nodejs14.x
+      MemorySize: 1024
+      Timeout: 900
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
   # SNS Dead Letter Topic
   DeadLetterTopic:
     Type: AWS::SNS::Topic
