@@ -11,7 +11,7 @@ const x192 = BN.from("0x01000000000000000000000000000000000000000000000000")
 // returns the balance of a holder for a list of tokens
 // result is an array
 // each element will be a decimal formatted string eg [ "1.2" ]
-async function fetchBalances(tokenList, holder, blockTag) {
+async function fetchBalances(tokenList, holder, blockTag="latest") {
   function createBalancePromise(i) {
     return new Promise((resolve, reject) => {
       withBackoffRetries(() => ((tokenList[i].address == ETH_ADDRESS)
@@ -31,7 +31,7 @@ exports.fetchBalances = fetchBalances
 // returns the balance of a holder for a list of ctokens
 // result is an array
 // each element will be an object eg [ {ctokenBalance: "1.2", utokenBalance: "2.5", exchangeRate: "2."}]
-async function fetchCTokenBalances(ctokenList, holder, blockTag) {
+async function fetchCTokenBalances(ctokenList, holder, blockTag="latest") {
   function createBalancePromise(i) {
     return new Promise(async (resolve, reject) => {
       try {
@@ -60,7 +60,7 @@ exports.fetchCTokenBalances = fetchCTokenBalances
 
 // fetch the total supply of a token
 // if the token does not exist returns 0
-async function fetchSupplyOrZero(token, blockTag) {
+async function fetchSupplyOrZero(token, blockTag="latest") {
   return new Promise((resolve, reject) => {
     withBackoffRetries(() => token.totalSupply({blockTag:blockTag})).then(resolve).catch(()=>{resolve(BN.from(0))})
   })
@@ -69,7 +69,7 @@ exports.fetchSupplyOrZero = fetchSupplyOrZero
 
 // fetch the token balance of a holder
 // if the token does not exist returns 0
-async function fetchBalanceOrZero(token, holder, blockTag) {
+async function fetchBalanceOrZero(token, holder, blockTag="latest") {
   return new Promise((resolve, reject) => {
     withBackoffRetries(() => token.balanceOf(holder, {blockTag:blockTag})).then(resolve).catch(()=>{resolve(BN.from(0))})
   })
@@ -78,7 +78,7 @@ exports.fetchBalanceOrZero = fetchBalanceOrZero
 
 // fetch the price per share of solace capital provider token
 // if the token does not exist returns 0
-async function fetchScpPpsOrZero(scp, blockTag) {
+async function fetchScpPpsOrZero(scp, blockTag="latest") {
   return new Promise((resolve, reject) => {
     withBackoffRetries(() => scp.pricePerShare({blockTag:blockTag})).then(resolve).catch(()=>{resolve(BN.from(0))})
   })
@@ -87,7 +87,7 @@ exports.fetchScpPpsOrZero = fetchScpPpsOrZero
 
 // fetch the reserves of a uniswap v2 pair (and forks)
 // if the pool does not exist returns 0
-async function fetchReservesOrZero(pair, blockTag) {
+async function fetchReservesOrZero(pair, blockTag="latest") {
   return new Promise((resolve, reject) => {
     withBackoffRetries(() => pair.getReserves({blockTag:blockTag})).then(resolve).catch(()=>{resolve({_reserve0:BN.from(0),_reserve1:BN.from(0)})})
   })
@@ -95,7 +95,7 @@ async function fetchReservesOrZero(pair, blockTag) {
 exports.fetchReservesOrZero = fetchReservesOrZero
 
 // fetch the price of a token in a uniswap v2 pool
-async function fetchUniswapV2PriceOrZero(pair, oneZero, decimals0, decimals1, blockTag) {
+async function fetchUniswapV2PriceOrZero(pair, oneZero, decimals0, decimals1, blockTag="latest") {
   return new Promise((resolve, reject) => {
     withBackoffRetries(() => pair.getReserves({blockTag:blockTag})).then(reserves => {
       resolve(calculateUniswapV2PriceOrZero(reserves._reserve0, reserves._reserve1, oneZero, decimals0, decimals1))
@@ -118,7 +118,7 @@ function calculateUniswapV2PriceOrZero(reserve0, reserve1, oneZero, decimals0, d
 exports.calculateUniswapV2PriceOrZero = calculateUniswapV2PriceOrZero
 
 // fetch the price of a token in a uniswap v3 pool
-async function fetchUniswapV3PriceOrZero(pool, oneZero, decimals0, decimals1, blockTag) {
+async function fetchUniswapV3PriceOrZero(pool, oneZero, decimals0, decimals1, blockTag="latest") {
   return new Promise((resolve, reject) => {
     withBackoffRetries(() => pool.slot0({blockTag:blockTag})).then(slot0 => {
       var price = formatUnits(

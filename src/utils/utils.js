@@ -91,7 +91,7 @@ exports.snsPublishError = snsPublishError
 // gets an ethers provider for a given chainID
 async function getProvider(chainID) {
   let providers = JSON.parse(await s3GetObjectPromise({
-    Bucket: 'stats.solace.fi.data',
+    Bucket: 'price-feed.solace.fi.data',
     Key: 'providers.json'
   }, cache=true))
   if(!Object(providers).hasOwnProperty(chainID)) {

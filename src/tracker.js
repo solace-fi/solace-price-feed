@@ -2,6 +2,7 @@
 
 const { snsPublishError, s3GetObjectPromise } = require("./utils/utils")
 const { trackBondPrices } = require("./bondPrices")
+const { trackSolacePrice } = require("./solacePrice")
 
 // Define headers
 const headers = {
@@ -13,6 +14,7 @@ const headers = {
 async function track() {
   var res = await Promise.all([
     trackBondPrices(),
+    trackSolacePrice()
   ])
   return res
 }
