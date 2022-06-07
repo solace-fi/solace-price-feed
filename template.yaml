@@ -178,6 +178,15 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: rate(5 minutes)
+  SolacePriceFeedSignerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SolacePriceFeedSignerFunction
+      Handler: src/solacePriceSigner.handler
+      Runtime: python3.8
+      MemorySize: 1024
+      Timeout: 60
+      Role: !GetAtt LambdaExecutionRole.Arn
   # SNS Dead Letter Topic
   DeadLetterTopic:
     Type: AWS::SNS::Topic
@@ -216,3 +225,12 @@ Resources:
                   - "s3:ReplicateObject"
                   - "s3:RestoreObject"
                 Resource: "arn:aws:s3:::price-feed.solace.fi.data/*"
+              - Effect: Allow
+                Action:
+                  - "kms:GetPublicKey"
+                  - "kms:Sign"
+                Resource: "arn:aws:kms:us-west-2:151427405638:key/85ca2271-57a3-4daf-885f-151edc03d7eb"
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "arn:aws:lambda:us-west-2:151427405638:function:SolacePriceFeedSignerFunction"

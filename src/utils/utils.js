@@ -69,7 +69,7 @@ exports.s3PutObjectPromise = s3PutObjectPromise
 async function snsPublishMessage(msg) {
   var params = {
     Message: msg,
-    TopicArn: "arn:aws:sns:us-west-2:151427405638:DeadLetterSnsTopic"
+    TopicArn: "arn:aws:sns:us-west-2:151427405638:PriceFeedDeadLetterQueue"
   }
   return new AWS.SNS({apiVersion: '2010-03-31'}).publish(params).promise()
 }
