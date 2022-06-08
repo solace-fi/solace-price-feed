@@ -41,7 +41,6 @@ def sign(price, price_normalized):
         bundle["signatures"][chainID] = {}
         for addr in verifyingContracts[chainID]:
             params = verifyingContracts[chainID][addr]
-            #print(params)
             bundle1 = {
                 "chainID": int(chainID),
                 "token": params["token"],
