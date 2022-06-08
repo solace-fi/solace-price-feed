@@ -35,7 +35,7 @@ if not initialized:
 # writes to s3
 def sign(price, price_normalized):
     bundle = { "price": price, "price_normalized": price_normalized, "signer": signerAddress, "signatures": {} }
-    deadline = int(datetime.utcnow().timestamp()) + 86400 # one day from now
+    deadline = int(datetime.utcnow().timestamp()) + 3600 # one hour from now
     for chainID in verifyingContracts:
         chainNum = int(chainID)
         bundle["signatures"][chainID] = {}
