@@ -1,0 +1,236 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  solace-price-feed
+
+  Sample SAM Template for solace-price-feed
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    AutoPublishAlias: live
+    Tracing: Active
+    Environment:
+      Variables:
+        DEAD_LETTER_TOPIC: arn:aws:sns:us-west-2:151427405638:PriceFeedDeadLetterQueue
+        DATA_BUCKET: price-feed.solace.fi.data
+    DeadLetterQueue:
+      Type: SNS
+      TargetArn: arn:aws:sns:us-west-2:151427405638:PriceFeedDeadLetterQueue
+  Api:
+    Cors:
+      AllowMethods: "'OPTIONS,GET,POST,PUT,DELETE'"
+      AllowHeaders: "'Content-Type'"
+      AllowOrigin: "'*'"
+
+Resources:
+  # begin price-feed.solace.fi frontend
+  PriceFeedWebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: price-feed.solace.fi
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods:
+              - HEAD
+              - GET
+            AllowedOrigins:
+              - '*'
+            AllowedHeaders:
+              - '*'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      Tags:
+        - Key: Project
+          Value: client
+  PriceFeedWebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref PriceFeedWebsiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Action:
+            - "s3:GetObject"
+          Effect: "Allow"
+          Resource: arn:aws:s3:::price-feed.solace.fi/*
+          Principal:
+            AWS: !Join ["", ["arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ", "EPMQ7FUHPT5YX"] ]
+        - Action:
+            - "*"
+          Effect: "Allow"
+          Resource: arn:aws:s3:::price-feed.solace.fi
+          Principal:
+            AWS: "arn:aws:iam::151427405638:role/SolacePriceFeedLambdaExecutionRole"
+        - Action:
+            - "*"
+          Effect: "Allow"
+          Resource: arn:aws:s3:::price-feed.solace.fi/*
+          Principal:
+            AWS: "arn:aws:iam::151427405638:role/SolacePriceFeedLambdaExecutionRole"
+  PriceFeedWebsiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: PriceFeedWebsiteBucket
+            DomainName: price-feed.solace.fi.s3.amazonaws.com
+            S3OriginConfig:
+              OriginAccessIdentity: !Join ["", ["origin-access-identity/cloudfront/", "EPMQ7FUHPT5YX"] ]
+        Enabled: 'true'
+        DefaultRootObject: index.html
+        Aliases:
+          - price-feed.solace.fi
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          Compress: true
+          ViewerProtocolPolicy: redirect-to-https
+          TargetOriginId: PriceFeedWebsiteBucket
+          CachePolicyId: "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+          OriginRequestPolicyId: "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
+          ResponseHeadersPolicyId: "5cc3b908-e619-4b99-88e5-2cf7f45965bd"
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          AcmCertificateArn: arn:aws:acm:us-east-1:151427405638:certificate/54ea004e-a3bf-4f9e-a027-d9f4f0dc2d34
+          MinimumProtocolVersion: TLSv1.2_2018
+          SslSupportMethod: sni-only
+        HttpVersion: http2
+        IPV6Enabled: true
+      Tags:
+        - Key: Project
+          Value: client
+    DependsOn: PriceFeedWebsiteBucketPolicy
+  PriceFeedDnsZoneIPv4:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt PriceFeedWebsiteDistribution.DomainName
+        EvaluateTargetHealth: false
+        HostedZoneId: Z2FDTNDATAQYW2
+      HostedZoneName: solace.fi.
+      Name: price-feed.solace.fi
+      Type: A
+    DependsOn: PriceFeedWebsiteDistribution
+  PriceFeedDnsZoneIPv4:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt PriceFeedWebsiteDistribution.DomainName
+        EvaluateTargetHealth: false
+        HostedZoneId: Z2FDTNDATAQYW2
+      HostedZoneName: solace.fi.
+      Name: price-feed.solace.fi
+      Type: A
+    DependsOn: PriceFeedWebsiteDistribution
+  PriceFeedDnsZoneIPv6:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName: !GetAtt PriceFeedWebsiteDistribution.DomainName
+        EvaluateTargetHealth: false
+        HostedZoneId: Z2FDTNDATAQYW2
+      HostedZoneName: solace.fi.
+      Name: price-feed.solace.fi
+      Type: AAAA
+    DependsOn: PriceFeedWebsiteDistribution
+  # end price-feed.solace.fi frontend
+  # Data Bucket
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: price-feed.solace.fi.data
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods:
+              - HEAD
+              - GET
+            AllowedOrigins:
+              - "*"
+            AllowedHeaders:
+              - "*"
+  # tracker function
+  SolacePriceFeedTrackerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SolacePriceFeedTrackerFunction
+      Handler: src/tracker.handler
+      Runtime: nodejs14.x
+      MemorySize: 1024
+      Timeout: 900
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+  SolacePriceFeedSignerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SolacePriceFeedSignerFunction
+      Handler: src/solacePriceSigner.handler
+      Runtime: python3.8
+      MemorySize: 1024
+      Timeout: 60
+      Role: !GetAtt LambdaExecutionRole.Arn
+  # SNS Dead Letter Topic
+  DeadLetterTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: Solace Price Feed Dead Letter Queue
+      TopicName: PriceFeedDeadLetterQueue
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: SolacePriceFeedLambdaExecutionRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [lambda.amazonaws.com]
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      Policies:
+        - PolicyName: SolacePriceFeedLambdaExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "sns:Publish"
+                Resource: "arn:aws:sns:us-west-2:151427405638:PriceFeedDeadLetterQueue"
+              - Effect: Allow
+                Action:
+                  - "s3:GetObject"
+                  - "s3:DeleteObject"
+                  - "s3:ListBucket"
+                  - "s3:ListObjectsV2"
+                  - "s3:PutObject"
+                  - "s3:ReplicateObject"
+                  - "s3:RestoreObject"
+                Resource: "arn:aws:s3:::price-feed.solace.fi.data/*"
+              - Effect: Allow
+                Action:
+                  - "kms:GetPublicKey"
+                  - "kms:Sign"
+                Resource: "arn:aws:kms:us-west-2:151427405638:key/85ca2271-57a3-4daf-885f-151edc03d7eb"
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "arn:aws:lambda:us-west-2:151427405638:function:SolacePriceFeedSignerFunction"

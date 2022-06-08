@@ -1,0 +1,12 @@
+{
+  "name": "SolacePriceFeed",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {},
+  "dependencies": {
+    "aws-sdk": "^2.771.0",
+    "axios": "^0.26.1",
+    "ethers": "^5.4.4",
+    "ethers-multicall": "^0.2.2"
+  }
+}
