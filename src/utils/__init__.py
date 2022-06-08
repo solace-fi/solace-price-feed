@@ -280,5 +280,16 @@ def price_sign(primitive, kms_key_id):
     # calculate v
     message_eth_recovered_pub_addr = get_recovery_id(msg_hash=message_hash,r=message_sig['r'],s=message_sig['s'],eth_checksum_addr=eth_checksum_addr)
     # assemble signature
-    signature = '{}{}{}'.format(hex(message_sig['r']), hex(message_sig['s'])[2:], hex(message_eth_recovered_pub_addr['v'])[2:])
+    r = hex(message_sig['r'])[2:]
+    s = hex(message_sig['s'])[2:]
+    v = hex(message_eth_recovered_pub_addr['v'])[2:]
+    while(len(r) < 64):
+        r = '0{}'.format(r)
+    while(len(s) < 64):
+        s = '0{}'.format(s)
+    while(len(v) < 2):
+        v = '0{}'.format(v)
+    signature = '0x{}{}{}'.format(r,s,v)
+    if len(signature) != 132: # expect 65 bytes
+        raise Exception('invalid signature length: {}'.format(signature))
     return signature
