@@ -5,28 +5,11 @@ from src.utils import *
 initialized = False
 signerKeyID = ""
 signerAddress = ""
-
-verifyingContracts = {
-    "4": {
-        "0x501ACEEf4ED46E49BdE84173E76AADa913855f16": {
-            "token": "0x501acE9c35E60f03A2af4d484f49F9B1EFde9f40",
-            "domainName": "Solace.fi-PriceVerifier",
-            "typeName": "PriceData",
-            "version": "1"
-        }
-    },
-    "4002": {
-        "0x501AcE6f3aa5898909E1D490A0ACcDf5580201Df": {
-            "token": "0x501ACE0C6DeA16206bb2D120484a257B9F393891",
-            "domainName": "Solace.fi-PriceVerifier",
-            "typeName": "PriceData",
-            "version": "1"
-        }
-    }
-}
+verifyingContracts = {}
 
 if not initialized:
     config = json.loads(s3_get('config.json', cache=True))
+    verifyingContracts = json.loads(s3_get('solacePrice/verifyingContracts.json', cache=True))
     signerKeyID = config["signerKeyID"]
     signerAddress = config["signerAddress"]
     initialized = True
