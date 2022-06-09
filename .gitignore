@@ -280,3 +280,6 @@ $RECYCLE.BIN/
 
 # aws
 .aws-sam/*
+
+*-ignore
+*-backup
