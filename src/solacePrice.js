@@ -11,12 +11,7 @@ const multicall = require('ethers-multicall')
 var initialized = false
 var uniswapV2PairAbi
 var erc20Abi
-/*
-var pairs = {
-  "1": {},
-  "1313161554": {},
-}
-*/
+
 const PAIR_ADDRESSES = {
     "1": {
         "SOLACE-USDC"  : "0x9C051F8A6648a51eF324D30C235da74D060153aC"
@@ -32,36 +27,13 @@ const SOLACE_ADDRESS = "0x501acE9c35E60f03A2af4d484f49F9B1EFde9f40"
 async function prefetch() {
   if(initialized) return
 
-  //let providers = {}
-  //let mcProviders = {}
-
-  /*
-  var [providerEthereum, providerEthereumMC, providerAurora, providerAuroraMC, uniV2PairAbi] = await Promise.all([
-    getProvider(1),
-    getProvider(1313161554),
-    getMulticallProvider(1),
-    getMulticallProvider(1313161554),
-    s3GetObjectPromise({Bucket: 'stats.solace.fi.data', Key: 'abi/other/UniswapV2Pair.json'}, cache=true),
-  ])
-  */
   var providersJson
   [providersJson, uniV2PairAbi, erc20Abi] = await Promise.all([
     s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'providers.json'}, cache=true),
     s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'abi/other/UniswapV2Pair.json'}, cache=true),
     s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'abi/other/ERC20.json'}, cache=true),
   ])
-  /*
-  pairs = {
-    "USDC-WNEAR": new ethers.Contract("0x20F8AeFB5697B77E0BB835A8518BE70775cdA1b0", uniV2PairAbi, provider), // trisolaris usdc-wnear
-    "SOLACE-WNEAR": new ethers.Contract("0xdDAdf88b007B95fEb42DDbd110034C9a8e9746F2", uniV2PairAbi, provider), // trisolaris solace-wnear
-  }
-  */
-  //var chainIDs = Object.keys(PAIR_ADDRESSES)
-  /*
-  pairs["1"]["SOLACE-USDC"] = new ethers.Contract(PAIR_ADDRESSES["1"]["SOLACE-USDC"], uniswapV2PairAbi, providerEthereum)
-  pairs["1313161554"]["SOLACE-WNEAR"] = new ethers.Contract(PAIR_ADDRESSES["1313161554"]["SOLACE-WNEAR"], uniswapV2PairAbi, providerEthereum)
-  pairs["1313161554"]["USDC-WNEAR"] = new ethers.Contract(PAIR_ADDRESSES["1313161554"]["USDC-WNEAR"], uniswapV2PairAbi, providerEthereum)
-  */
+  
   initialized = true
 }
 
