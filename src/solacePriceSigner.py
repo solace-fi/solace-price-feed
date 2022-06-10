@@ -5,13 +5,17 @@ from src.utils import *
 initialized = False
 signerKeyID = ""
 signerAddress = ""
+providers = {}
 verifyingContracts = {}
+solaceSignerAbi = []
 
 if not initialized:
     config = json.loads(s3_get('config.json', cache=True))
-    verifyingContracts = json.loads(s3_get('solacePrice/verifyingContracts.json', cache=True))
     signerKeyID = config["signerKeyID"]
     signerAddress = config["signerAddress"]
+    providers = config["providers"]
+    verifyingContracts = json.loads(s3_get('solacePrice/verifyingContracts.json', cache=True))
+    solaceSignerAbi = json.loads(s3_get('abi/solace/utils/SolaceSigner.json', cache=True))
     initialized = True
 
 # signs the price
@@ -19,9 +23,12 @@ if not initialized:
 def sign(price, price_normalized):
     bundle = { "price": price, "price_normalized": price_normalized, "signer": signerAddress, "signatures": {} }
     deadline = int(datetime.utcnow().timestamp()) + 3600 # one hour from now
+    # loop over chains
     for chainID in verifyingContracts:
         chainNum = int(chainID)
         bundle["signatures"][chainID] = {}
+        w3 = Web3(Web3.HTTPProvider(providers[chainID]['url']))
+        # loop over contracts
         for addr in verifyingContracts[chainID]:
             params = verifyingContracts[chainID][addr]
             bundle1 = {
@@ -58,7 +65,17 @@ def sign(price, price_normalized):
                     "deadline": deadline
                 }
             }
-            bundle1["signature"] = price_sign(primitive, signerKeyID)
+            # sign and verify it works
+            isValid = False
+            contract = w3.eth.contract(address=addr, abi=solaceSignerAbi)
+            while not isValid:
+                try:
+                    signature = price_sign(primitive, signerKeyID)
+                    # verify signature
+                    isValid = contract.functions.verifyPrice(params["token"], int(price_normalized), deadline, signature).call()
+                    bundle1["signature"] = signature
+                except:
+                    continue
             bundle["signatures"][chainID][addr] = bundle1
     return bundle
 

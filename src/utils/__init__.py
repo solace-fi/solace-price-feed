@@ -269,7 +269,8 @@ def price_sign(primitive, kms_key_id):
     # hash the message
     # TODO: this gets the hash of the message by signing it first (with the old paclas signer with the plaintext key)
     # not a security issue, just an inefficiency
-    signed_message = w3auto.eth.account.sign_message(message, private_key=s3_get("rinkeby_signer_key.txt", cache=True))
+    private_key = s3_get("rinkeby_signer_key.txt", cache=True)
+    signed_message = w3auto.eth.account.sign_message(message, private_key=private_key)
     message_hash = signed_message.messageHash
     # download public key from KMS
     pub_key = get_kms_public_key(kms_key_id)
@@ -283,13 +284,5 @@ def price_sign(primitive, kms_key_id):
     r = hex(message_sig['r'])[2:]
     s = hex(message_sig['s'])[2:]
     v = hex(message_eth_recovered_pub_addr['v'])[2:]
-    while(len(r) < 64):
-        r = '0{}'.format(r)
-    while(len(s) < 64):
-        s = '0{}'.format(s)
-    while(len(v) < 2):
-        v = '0{}'.format(v)
     signature = '0x{}{}{}'.format(r,s,v)
-    if len(signature) != 132: # expect 65 bytes
-        raise Exception('invalid signature length: {}'.format(signature))
     return signature
