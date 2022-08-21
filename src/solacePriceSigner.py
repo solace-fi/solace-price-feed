@@ -6,7 +6,6 @@ initialized = False
 signerKeyID = ""
 signerAddress = ""
 providers = {}
-verifyingContracts = {}
 solaceSignerAbi = []
 
 if not initialized:
@@ -14,7 +13,6 @@ if not initialized:
     signerKeyID = config["signerKeyID"]
     signerAddress = config["signerAddress"]
     providers = config["providers"]
-    verifyingContracts = json.loads(s3_get('solacePrice/verifyingContracts.json', cache=True))
     solaceSignerAbi = json.loads(s3_get('abi/solace/utils/SolaceSigner.json', cache=True))
     initialized = True
 
@@ -24,6 +22,7 @@ def sign(price, price_normalized):
     bundle = { "price": price, "price_normalized": price_normalized, "signer": signerAddress, "signatures": {} }
     deadline = int(datetime.utcnow().timestamp()) + 3600 # one hour from now
     # loop over chains
+    verifyingContracts = json.loads(s3_get('solacePrice/verifyingContracts.json', cache=False))
     for chainID in verifyingContracts:
         chainNum = int(chainID)
         bundle["signatures"][chainID] = {}
