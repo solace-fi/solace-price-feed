@@ -3,6 +3,7 @@
 const { snsPublishError, s3GetObjectPromise } = require("./utils/utils")
 const { trackBondPrices } = require("./bondPrices")
 const { trackSolacePrice } = require("./solacePrice")
+const { trackNativePrices } = require("./nativePrices")
 
 const AWS = require('aws-sdk')
 var lambda = new AWS.Lambda({apiVersion: '2015-03-31'})
@@ -14,6 +15,8 @@ const headers = {
   "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PUT,DELETE"
 }
 
+// TODO: this calls the signer function which is written in python
+// rewrite it in js to avoid multiple functions running
 async function sign() {
   return new Promise((resolve,reject) => {
     var params = {
@@ -34,12 +37,15 @@ async function sign() {
 }
 
 async function track() {
-  var res = await Promise.all([
+  var res1 = await Promise.all([
     trackBondPrices(),
     trackSolacePrice()
   ])
-  await sign()
-  return res
+  var res2 = await Promise.all([
+    sign(),
+    trackNativePrices(res1)
+  ])
+  return res1
 }
 
 // Lambda handler
