@@ -83,7 +83,7 @@ async function snsPublishError(event, err) {
     eventString = `\n${event["headers"]["X-Forwarded-Proto"]}://${event["headers"]["Host"]}${event["path"]} params=${JSON.stringify(event["queryStringParameters"])}`
   } catch(e) {}
   var errMsg = err.stack || err.toString()
-  var msg = `The following error occurred in the solace-stats api${eventString} :\n${errMsg}`
+  var msg = `The following error occurred in the solace-price-feed api${eventString} :\n${errMsg}`
   return snsPublishMessage(msg)
 }
 exports.snsPublishError = snsPublishError
