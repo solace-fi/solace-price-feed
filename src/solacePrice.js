@@ -1,7 +1,7 @@
 // record the price of SOLACE
 // stores the price of SOLACE over time then uses a outlier detection and a seven day TWAP to calculate the true price
 
-const { getProvider, getMulticallProvider, s3GetObjectPromise, s3PutObjectPromise, snsPublishError, withBackoffRetries, formatTimestamp, fetchBlock } = require("./utils/utils")
+const { getProvider, getMulticallProvider, s3GetObjectPromise, s3PutObjectPromise, snsPublishError, withBackoffRetries, formatTimestamp, fetchBlock, multicallChunked } = require("./utils/utils")
 const { fetchReservesOrZero, calculateUniswapV2PriceOrZero } = require("./utils/priceUtils")
 const ethers = require('ethers')
 const BN = ethers.BigNumber
@@ -29,20 +29,20 @@ async function prefetch() {
 
   var providersJson
   [providersJson, uniV2PairAbi, erc20Abi] = await Promise.all([
-    s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'providers.json'}, cache=true),
-    s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'abi/other/UniswapV2Pair.json'}, cache=true),
-    s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'abi/other/ERC20.json'}, cache=true),
+    s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'providers.json'}, cache=true).then(JSON.parse),
+    s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'abi/other/UniswapV2Pair.json'}, cache=true).then(JSON.parse),
+    s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'abi/other/ERC20.json'}, cache=true).then(JSON.parse),
   ])
-  
+
   initialized = true
 }
 
 // fetch the solace price and balance from the ethereum sushiswap pair
 async function fetchPairStatsEthereum() {
-  var provider = await getProvider(1)
-  var solace = new ethers.Contract(SOLACE_ADDRESS, erc20Abi, provider)
-  var pair = new ethers.Contract(PAIR_ADDRESSES["1"]["SOLACE-USDC"], uniV2PairAbi, provider)
-  var [balance, reserves] = await Promise.all([
+  var mcProvider = await getMulticallProvider(1)
+  var solace = new multicall.Contract(SOLACE_ADDRESS, erc20Abi)
+  var pair = new multicall.Contract(PAIR_ADDRESSES["1"]["SOLACE-USDC"], uniV2PairAbi)
+  var [balance, reserves] = await multicallChunked(mcProvider, [
     solace.balanceOf(pair.address),
     pair.getReserves()
   ])
@@ -53,14 +53,14 @@ async function fetchPairStatsEthereum() {
 
 // fetch the solace price and balance from the aurora trisolaris pair
 async function fetchPairStatsAurora() {
-  var provider = await getProvider(1313161554)
-  var solace = new ethers.Contract(SOLACE_ADDRESS, erc20Abi, provider)
-  var pairSN = new ethers.Contract(PAIR_ADDRESSES["1313161554"]["SOLACE-WNEAR"], uniV2PairAbi, provider)
-  var pairUN = new ethers.Contract(PAIR_ADDRESSES["1313161554"]["USDC-WNEAR"], uniV2PairAbi, provider)
-  var [balance, reservesSN, reservesUN] = await Promise.all([
+  var mcProvider = await getMulticallProvider(1313161554)
+  var solace = new multicall.Contract(SOLACE_ADDRESS, erc20Abi)
+  var pairSN = new multicall.Contract(PAIR_ADDRESSES["1313161554"]["SOLACE-WNEAR"], uniV2PairAbi)
+  var pairUN = new multicall.Contract(PAIR_ADDRESSES["1313161554"]["USDC-WNEAR"], uniV2PairAbi)
+  var [balance, reservesSN, reservesUN] = await multicallChunked(mcProvider, [
     solace.balanceOf(pairSN.address),
     pairSN.getReserves(),
-    pairUN.getReserves(),
+    pairUN.getReserves()
   ])
   balance = parseFloat(formatUnits(balance, 18))
   var priceSN = calculateUniswapV2PriceOrZero(reservesSN._reserve0, reservesSN._reserve1, false, 18, 24)

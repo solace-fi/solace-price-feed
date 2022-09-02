@@ -2,7 +2,7 @@
 // stores the price of native tokens over time then uses a outlier detection and a seven day TWAP to calculate the true price
 // some tokens already have a flux price feed - this is for those that dont
 
-const { getProvider, getMulticallProvider, s3GetObjectPromise, s3PutObjectPromise, snsPublishError, withBackoffRetries, formatTimestamp, fetchBlock } = require("./utils/utils")
+const { getProvider, getMulticallProvider, s3GetObjectPromise, s3PutObjectPromise, snsPublishError, withBackoffRetries, formatTimestamp, fetchBlock, multicallChunked } = require("./utils/utils")
 const { fetchReservesOrZero, calculateUniswapV2PriceOrZero } = require("./utils/priceUtils")
 const ethers = require('ethers')
 const BN = ethers.BigNumber
@@ -27,7 +27,7 @@ async function prefetch() {
 
   var providersJson
   [providersJson, uniV2PairAbi, erc20Abi] = await Promise.all([
-    s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'providers.json'}, cache=true),
+    s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'providers.json'}, cache=true).then(JSON.parse),
     s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'abi/other/UniswapV2Pair.json'}, cache=true).then(JSON.parse),
     s3GetObjectPromise({Bucket: 'price-feed.solace.fi.data', Key: 'abi/other/ERC20.json'}, cache=true).then(JSON.parse),
   ])
@@ -42,7 +42,7 @@ async function fetchLatestPrices() {
   var mcProvider = await getMulticallProvider(1313161554)
   var now = Math.floor((new Date()).valueOf() / 1000)
   var pairs = PAIR_NAMES.map(name => new multicall.Contract(PAIR_ADDRESSES[name].address, uniV2PairAbi))
-  var reservesList = await mcProvider.all(pairs.map(pair => pair.getReserves()));
+  var reservesList = await multicallChunked(mcProvider, pairs.map(pair => pair.getReserves()));
   // process
   for(var i = 0; i < reservesList.length; ++i) {
     if(reservesList[i]._reserve0.eq(0) || reservesList[i]._reserve1.eq(0)) {
