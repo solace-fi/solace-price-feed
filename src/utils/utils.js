@@ -289,3 +289,27 @@ function formatUnitsFull(amount, decimals=18) {
   return s2
 }
 exports.formatUnitsFull = formatUnitsFull
+
+async function multicallChunked(mcProvider, calls, blockTag="latest", chunkSize=25) {
+  if(blockTag == 'latest') blockTag = await mcProvider._provider.getBlockNumber()
+  // break into chunks
+  var chunks = []
+  for(var i = 0; i < calls.length; i += chunkSize) {
+    var chunk = []
+    for(var j = 0; j < chunkSize && i+j < calls.length; ++j) {
+      chunk.push(calls[i+j])
+    }
+    chunks.push(chunk)
+  }
+  // parallel call each chunk
+  var res1 = await Promise.all(chunks.map(chunk => withBackoffRetries(() => mcProvider.all(chunk, {blockTag:blockTag,gasLimit:30000000}))))
+  // reassemble
+  var res2 = []
+  for(var i = 0; i < res1.length; ++i) {
+    for(var j = 0; j < res1[i].length; ++j) {
+      res2.push(res1[i][j])
+    }
+  }
+  return res2
+}
+exports.multicallChunked = multicallChunked
