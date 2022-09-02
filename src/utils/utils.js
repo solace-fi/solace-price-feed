@@ -254,30 +254,43 @@ exports.findDeployBlock = findDeployBlock
 
 // fetch events that occurred in a contract with the given event name between startBlock and endBlock
 async function fetchEvents(contract, eventName, startBlock, endBlock) {
+  if(endBlock == 'latest') endBlock = await contract.provider.getBlockNumber()
+  return _fetchEvents(contract, eventName, startBlock, endBlock, 0)
+}
+exports.fetchEvents = fetchEvents;
+
+// helper for fetchEvents()
+async function _fetchEvents(contract, eventName, startBlock, endBlock, depth) {
   return new Promise(async (resolve,reject) => {
-    if(endBlock == 'latest') endBlock = await provider.getBlockNumber()
     try {
       var events = await contract.queryFilter(eventName, startBlock, endBlock)
       resolve(events)
       return
     } catch(e) {
+      /*
       var s = e.toString();
-      if(!s.includes("10K") && !s.includes("timeout")) {
+      if(!s.includes("10K") && !s.includes("1000 results") && !s.includes("statement timeout") && !s.includes("missing response")) {
         reject(e)
         return
       }
-      // log response size exceeded or query too large. recurse down
+      */
+      // log response size exceeded. recurse down
       var midBlock = Math.floor((startBlock+endBlock)/2)
-      var [left, right] = await Promise.all([
-        fetchEvents(contract, eventName, startBlock, midBlock),
-        fetchEvents(contract, eventName, midBlock+1, endBlock),
-      ])
+      var [left, right] = [ [], [] ]
+      if(depth < 8) {
+        [left, right] = await Promise.all([ // parallel
+          _fetchEvents(contract, eventName, startBlock, midBlock, depth+1),
+          _fetchEvents(contract, eventName, midBlock+1, endBlock, depth+1),
+        ])
+      } else { // serial
+        left = await _fetchEvents(contract, eventName, startBlock, midBlock, depth+1)
+        right = await _fetchEvents(contract, eventName, midBlock+1, endBlock, depth+1)
+      }
       var res = left.concat(right)
       resolve(res)
     }
   })
 }
-exports.fetchEvents = fetchEvents
 
 // formats a BigNumber into a string representation of a float
 // like ethers.utils.formatUnits() except keeps trailing zeros
