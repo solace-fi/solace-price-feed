@@ -185,7 +185,7 @@ Resources:
       Handler: src/solacePriceSigner.handler
       Runtime: python3.8
       MemorySize: 1024
-      Timeout: 60
+      Timeout: 900
       Role: !GetAtt LambdaExecutionRole.Arn
   # SNS Dead Letter Topic
   DeadLetterTopic:
