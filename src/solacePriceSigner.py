@@ -1,5 +1,6 @@
 # TODO: transcribe to javascript so it doesn't need to run in a separate lambda
 
+from datetime import timezone
 from src.utils import *
 
 initialized = False
@@ -9,7 +10,7 @@ providers = {}
 solaceSignerAbi = []
 
 if not initialized:
-    config = json.loads(s3_get('config.json', cache=True))
+    config = json.loads(s3_get('config.json', cache=False))
     signerKeyID = config["signerKeyID"]
     signerAddress = config["signerAddress"]
     providers = config["providers"]
@@ -20,7 +21,10 @@ if not initialized:
 # writes to s3
 def sign(price, price_normalized):
     bundle = { "price": price, "price_normalized": price_normalized, "signer": signerAddress, "signatures": {} }
-    deadline = int(datetime.utcnow().timestamp()) + 3600 # one hour from now
+    dt = datetime.now(timezone.utc)
+    time = dt.replace(tzinfo=timezone.utc)
+    deadline = int(time.timestamp()) + 3600
+  
     # loop over chains
     verifyingContracts = json.loads(s3_get('solacePrice/verifyingContracts.json', cache=False))
     for chainID in verifyingContracts:
@@ -73,7 +77,9 @@ def sign(price, price_normalized):
                     # verify signature
                     isValid = contract.functions.verifyPrice(params["token"], int(price_normalized), deadline, signature).call()
                     bundle1["signature"] = signature
-                except:
+                    print("Is valid: ", isValid)
+                except Exception as e:
+                    print(f"Error: ", e)
                     continue
             bundle["signatures"][chainID][addr] = bundle1
     return bundle
@@ -95,3 +101,6 @@ def handler(event, context):
         return handle_error(event, e, 400)
     except Exception as e:
         return handle_error(event, e, 500)
+
+if __name__ == '__main__':
+    handle()
